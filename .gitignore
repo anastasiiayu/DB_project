@@ -1,0 +1,10 @@
+.env
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore VS Code settings (if you don’t want them in repo)
+.vscode/
+
+# macOS system files
+.DS_Store
