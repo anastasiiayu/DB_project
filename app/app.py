@@ -1,15 +1,19 @@
 import os
+from dotenv import load_dotenv
 import mysql.connector
 from mysql.connector import errorcode
 
-# Database connection config
+# Load variables from .env into environment
+load_dotenv()
+
 DB_CONFIG = {
-    "host": os.getenv("DB_HOST", "localhost"),
-    "user": os.getenv("DB_USER", "root"),
-    "password": os.getenv("DB_PASSWORD", "Password1"),
-    "database": os.getenv("DB_NAME", "pizza_db"),
+    "host": os.getenv("DB_HOST"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "database": os.getenv("DB_NAME"),
     "port": int(os.getenv("DB_PORT", "3306")),
 }
+
 
 def connect():
     try:
