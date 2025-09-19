@@ -281,6 +281,17 @@ CREATE TABLE `STATUS` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+
+CREATE TABLE IF NOT EXISTS DELIVERY_PERSON_POSTAL (
+  DELIVERY_PERSON_ID INT NOT NULL,            
+  POSTAL_CODE_PREFIX VARCHAR(10) NOT NULL,    
+  PRIMARY KEY (DELIVERY_PERSON_ID, POSTAL_CODE_PREFIX),  
+  CONSTRAINT fk_dpp_person
+    FOREIGN KEY (DELIVERY_PERSON_ID)
+    REFERENCES DELIVERY_PERSON(DELIVERY_PERSON_ID)
+    ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 --
 -- Dumping data for table `STATUS`
 --
@@ -318,3 +329,197 @@ ALTER TABLE PRODUCT_TYPE
 ALTER TABLE STATUS
   ADD CONSTRAINT uq_status_name UNIQUE (STATUS_NAME);
 -- Dump completed on 2025-09-14 19:36:19
+
+
+ INSERT INTO INGREDIENT
+     (INGREDIENT_ID, INGREDIENT_NAME, COST, IS_VEGAN_SAFE,  IS_VEGETARIAN_SAFE , IS_ALCOHOL)
+     VALUES
+     (1,  'Tomato sauce',       30,  1, 1, 0),
+    (2,  'Mozzarella',         80,  0, 1, 0),
+     (3,  'Vegan mozzarella',   90,  1, 1, 0),
+     (4,  'Basil',              10,  1, 1, 0),
+     (5,  'Mushrooms',          50,  1, 1, 0),
+     (6,  'Pepperoni',         120,  0, 0, 0),
+      (7,  'Ham',               110,  0, 0, 0),
+      (8,  'Olives',             40,  1, 1, 0),
+    (9,  'Onion',              20,  1, 1, 0),
+      (10, 'Bell pepper',        40,  1, 1, 0);
+
+
+      INSERT INTO CUSTOMER
+  (FIRST_NAME, LAST_NAME, BIRTH_DATE, ADDRESS, PHONE_NUMBER, PIZZA_COUNT)
+VALUES
+  ('Anna',     'Ivanova',   '1999-03-14', 'Keizersgracht 12, Amsterdam',   '+31611110001', 3),
+  ('Boris',    'Petrov',    '1997-11-02', 'Prinsengracht 45, Amsterdam',   '+31611110002', 12),
+  ('Chen',     'Li',        '2001-06-28', 'Herengracht 77, Amsterdam',     '+31611110003', 7),
+  ('Daria',    'Smirnova',  '2000-12-09', 'Singel 5, Amsterdam',           '+31611110004', 0),
+  ('Elias',    'Cohen',     '1995-04-21', 'Damrak 101, Amsterdam',         '+31611110005', 18),
+  ('Fatima',   'Noor',      '1998-09-30', 'Spuistraat 220, Amsterdam',     '+31611110006', 5),
+  ('Giorgio',  'Rossi',     '1996-02-15', 'Vijzelstraat 3, Amsterdam',     '+31611110007', 10),
+  ('Hanna',    'Mueller',   '2002-07-11', 'Leidsestraat 89, Amsterdam',    '+31611110008', 1),
+  ('Ivan',     'Horvat',    '1994-01-05', 'Utrechtsestraat 60, Amsterdam', '+31611110009', 23),
+  ('Julia',    'Novak',     '2003-05-19', 'Ceintuurbaan 140, Amsterdam',   '+31611110010', 9);
+
+
+
+INSERT INTO DELIVERY_PERSON (FIRST_NAME, LAST_NAME, IS_AVAILABLE) VALUES
+('Max',   'de Vries', 1),
+('Sofie', 'Janssen',  1),
+('Lars',  'Bakker',   1);
+
+SELECT DELIVERY_PERSON_ID INTO @max_id
+FROM DELIVERY_PERSON
+WHERE FIRST_NAME='Max' AND LAST_NAME='de Vries' LIMIT 1;
+
+SELECT DELIVERY_PERSON_ID INTO @sofie_id
+FROM DELIVERY_PERSON
+WHERE FIRST_NAME='Sofie' AND LAST_NAME='Janssen' LIMIT 1;
+
+SELECT DELIVERY_PERSON_ID INTO @lars_id
+FROM DELIVERY_PERSON
+WHERE FIRST_NAME='Lars' AND LAST_NAME='Bakker' LIMIT 1;
+
+-- 3) создаём таблицу связки (если ещё не создала)
+CREATE TABLE IF NOT EXISTS DELIVERY_PERSON_POSTAL (
+  DELIVERY_PERSON_ID INT NOT NULL,
+  POSTAL_CODE_PREFIX VARCHAR(10) NOT NULL,
+  PRIMARY KEY (DELIVERY_PERSON_ID, POSTAL_CODE_PREFIX),
+  CONSTRAINT fk_dpp_person
+    FOREIGN KEY (DELIVERY_PERSON_ID) REFERENCES DELIVERY_PERSON(DELIVERY_PERSON_ID)
+    ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 4) назначаем зоны
+INSERT INTO DELIVERY_PERSON_POSTAL (DELIVERY_PERSON_ID, POSTAL_CODE_PREFIX) VALUES
+(@max_id,  '1011'),
+(@max_id,  '1012'),
+(@sofie_id,'1013'),
+(@sofie_id,'1014'),
+(@lars_id, '1015'),
+(@lars_id, '1016');
+
+
+
+INSERT INTO PRODUCT_TYPE (PRODUCT_TYPE_NAME, MARGIN, VAT)
+SELECT 'Pizza', 40, 9
+FROM DUAL
+WHERE NOT EXISTS (
+  SELECT 1 FROM PRODUCT_TYPE WHERE PRODUCT_TYPE_NAME='Pizza'
+);
+
+
+INSERT INTO PRODUCT_TYPE (PRODUCT_TYPE_NAME, MARGIN, VAT)
+SELECT 'Drink', 0, 9
+FROM DUAL
+WHERE NOT EXISTS (
+  SELECT 1 FROM PRODUCT_TYPE WHERE PRODUCT_TYPE_NAME='Drink'
+);
+
+
+INSERT INTO PRODUCT_TYPE (PRODUCT_TYPE_NAME, MARGIN, VAT)
+SELECT 'Dessert', 0, 9
+FROM DUAL
+WHERE NOT EXISTS (
+  SELECT 1 FROM PRODUCT_TYPE WHERE PRODUCT_TYPE_NAME='Dessert'
+);
+
+
+SELECT PRODUCT_TYPE_ID INTO @pizza_type_id
+FROM PRODUCT_TYPE WHERE PRODUCT_TYPE_NAME='Pizza' LIMIT 1;
+SELECT PRODUCT_TYPE_ID INTO @drink_type_id
+FROM PRODUCT_TYPE WHERE PRODUCT_TYPE_NAME='Drink' LIMIT 1;
+
+SELECT PRODUCT_TYPE_ID INTO @dessert_type_id
+FROM PRODUCT_TYPE WHERE PRODUCT_TYPE_NAME='Dessert' LIMIT 1;
+
+
+
+INSERT INTO PRODUCT (PRODUCT_NAME, IS_VEGAN, IS_VEGETARIAN, COST, PRODUCT_TYPE_ID) VALUES
+('Margherita',               0, 1,  8.50,  @pizza_type_id),
+('Marinara',                 1, 1,  7.50,  @pizza_type_id),
+('Funghi',                   0, 1,  9.50,  @pizza_type_id),
+('Pepperoni',                0, 0, 10.50,  @pizza_type_id),
+('Prosciutto',               0, 0, 10.90,  @pizza_type_id),
+('Veggie',                   0, 1,  9.90,  @pizza_type_id),
+('Quattro Formaggi (veg)',   0, 1, 11.20,  @pizza_type_id),
+('Hawaiian',                 0, 0, 10.80,  @pizza_type_id),
+('Diavola',                  0, 0, 10.90,  @pizza_type_id),
+('Vegan Special',            1, 1, 11.50,  @pizza_type_id);
+
+INSERT INTO PRODUCT (PRODUCT_NAME, IS_VEGAN, IS_VEGETARIAN, COST, PRODUCT_TYPE_ID) VALUES
+('Tiramisu',            0, 1, 4.50, @dessert_type_id),
+('Chocolate Brownie',   0, 1, 4.00, @dessert_type_id),
+('Apple Pie',           0, 1, 3.80, @dessert_type_id);
+
+
+INSERT INTO PRODUCT (PRODUCT_NAME, IS_VEGAN, IS_VEGETARIAN, COST, PRODUCT_TYPE_ID) VALUES
+('Coca-Cola 0.33L',        1, 1, 2.50, @drink_type_id),
+('Sparkling Water 0.5L',   1, 1, 2.20, @drink_type_id),
+('Apple Juice 0.33L',      1, 1, 2.60, @drink_type_id);
+
+
+-- Margherita (21): Tomato sauce(1), Mozzarella(2), Basil(4)
+INSERT INTO PRODUCT_INGREDIENT (INGREDIENT_ID, PRODUCT_ID, NUMBER_OF_INGREDIENTS) VALUES
+(1, 21, 1),
+(2, 21, 1),
+(4, 21, 1);
+
+-- Marinara (22): Tomato sauce(1), Onion(9), Basil(4)
+INSERT INTO PRODUCT_INGREDIENT (INGREDIENT_ID, PRODUCT_ID, NUMBER_OF_INGREDIENTS) VALUES
+(1, 22, 1),
+(9, 22, 1),
+(4, 22, 1);
+
+-- Funghi (23): Tomato sauce(1), Mozzarella(2), Mushrooms(5)
+INSERT INTO PRODUCT_INGREDIENT (INGREDIENT_ID, PRODUCT_ID, NUMBER_OF_INGREDIENTS) VALUES
+(1, 23, 1),
+(2, 23, 1),
+(5, 23, 1);
+
+-- Pepperoni (24): Tomato sauce(1), Mozzarella(2), Pepperoni(6)
+INSERT INTO PRODUCT_INGREDIENT (INGREDIENT_ID, PRODUCT_ID, NUMBER_OF_INGREDIENTS) VALUES
+(1, 24, 1),
+(2, 24, 1),
+(6, 24, 1);
+
+-- Prosciutto (25): Tomato sauce(1), Mozzarella(2), Ham(7)
+INSERT INTO PRODUCT_INGREDIENT (INGREDIENT_ID, PRODUCT_ID, NUMBER_OF_INGREDIENTS) VALUES
+(1, 25, 1),
+(2, 25, 1),
+(7, 25, 1);
+
+-- Veggie (26): Tomato sauce(1), Mozzarella(2), Bell pepper(10), Onion(9), Olives(8), Mushrooms(5)
+INSERT INTO PRODUCT_INGREDIENT (INGREDIENT_ID, PRODUCT_ID, NUMBER_OF_INGREDIENTS) VALUES
+(1, 26, 1),
+(2, 26, 1),
+(10, 26, 1),
+(9, 26, 1),
+(8, 26, 1),
+(5, 26, 1);
+
+-- Quattro Formaggi (veg) (27): Tomato sauce(1), Vegan mozzarella(3) x2, Olives(8)
+INSERT INTO PRODUCT_INGREDIENT (INGREDIENT_ID, PRODUCT_ID, NUMBER_OF_INGREDIENTS) VALUES
+(1, 27, 1),
+(3, 27, 2),
+(8, 27, 1);
+
+-- Hawaiian (28): Tomato sauce(1), Mozzarella(2), Ham(7), (замена Pineapple) Bell pepper(10)
+INSERT INTO PRODUCT_INGREDIENT (INGREDIENT_ID, PRODUCT_ID, NUMBER_OF_INGREDIENTS) VALUES
+(1, 28, 1),
+(2, 28, 1),
+(7, 28, 1),
+(10, 28, 1);
+
+-- Diavola (29): Tomato sauce(1), Mozzarella(2), Pepperoni(6), Onion(9)
+INSERT INTO PRODUCT_INGREDIENT (INGREDIENT_ID, PRODUCT_ID, NUMBER_OF_INGREDIENTS) VALUES
+(1, 29, 1),
+(2, 29, 1),
+(6, 29, 1),
+(9, 29, 1);
+
+-- Vegan Special (30): Tomato sauce(1), Vegan mozzarella(3), Mushrooms(5) x2, Bell pepper(10)
+INSERT INTO PRODUCT_INGREDIENT (INGREDIENT_ID, PRODUCT_ID, NUMBER_OF_INGREDIENTS) VALUES
+(1, 30, 1),
+(3, 30, 1),
+(5, 30, 2),
+(10, 30, 1);
