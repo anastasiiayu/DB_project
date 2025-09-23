@@ -92,6 +92,12 @@ LOCK TABLES `DISCOUNT_CODE` WRITE;
 /*!40000 ALTER TABLE `DISCOUNT_CODE` DISABLE KEYS */;
 /*!40000 ALTER TABLE `DISCOUNT_CODE` ENABLE KEYS */;
 UNLOCK TABLES;
+-- Insert demo discount codes
+INSERT INTO DISCOUNT_CODE (CODE, DISCOUNT_PERCENT, IS_USED)
+VALUES
+('WELCOME10', 10.00, 0),
+('FALL25', 25.00, 0),
+('VIP50', 50.00, 0);
 
 --
 -- Table structure for table `INGREDIENT`
@@ -330,21 +336,19 @@ ALTER TABLE STATUS
   ADD CONSTRAINT uq_status_name UNIQUE (STATUS_NAME);
 
 
-
-
  INSERT INTO INGREDIENT
      (INGREDIENT_ID, INGREDIENT_NAME, COST, IS_VEGAN_SAFE,  IS_VEGETARIAN_SAFE , IS_ALCOHOL)
      VALUES
-     (1,  'Tomato sauce',       30,  1, 1, 0),
-    (2,  'Mozzarella',         80,  0, 1, 0),
-     (3,  'Vegan mozzarella',   90,  1, 1, 0),
-     (4,  'Basil',              10,  1, 1, 0),
-     (5,  'Mushrooms',          50,  1, 1, 0),
-     (6,  'Pepperoni',         120,  0, 0, 0),
-      (7,  'Ham',               110,  0, 0, 0),
-      (8,  'Olives',             40,  1, 1, 0),
-    (9,  'Onion',              20,  1, 1, 0),
-      (10, 'Bell pepper',        40,  1, 1, 0);
+     (1,  'Tomato sauce',       0.30,  1, 1, 0),
+    (2,  'Mozzarella',         0.80,  0, 1, 0),
+     (3,  'Vegan mozzarella',   0.90,  1, 1, 0),
+     (4,  'Basil',              0.10,  1, 1, 0),
+     (5,  'Mushrooms',          0.50,  1, 1, 0),
+     (6,  'Pepperoni',         0.120,  0, 0, 0),
+      (7,  'Ham',               0.110,  0, 0, 0),
+      (8,  'Olives',             0.40,  1, 1, 0),
+    (9,  'Onion',              0.20,  1, 1, 0),
+      (10, 'Bell pepper',        0.40,  1, 1, 0);
 
 
       INSERT INTO CUSTOMER
@@ -367,18 +371,27 @@ INSERT INTO DELIVERY_PERSON (FIRST_NAME, LAST_NAME, IS_AVAILABLE) VALUES
 ('Max',   'de Vries', 1),
 ('Sofie', 'Janssen',  1),
 ('Lars',  'Bakker',   1);
+SET @max_id = (
+  SELECT DELIVERY_PERSON_ID
+  FROM DELIVERY_PERSON
+  WHERE FIRST_NAME='Max' AND LAST_NAME='de Vries'
+  LIMIT 1
+);
 
-SELECT DELIVERY_PERSON_ID INTO @max_id
-FROM DELIVERY_PERSON
-WHERE FIRST_NAME='Max' AND LAST_NAME='de Vries' LIMIT 1;
+SET @sofie_id = (
+  SELECT DELIVERY_PERSON_ID
+  FROM DELIVERY_PERSON
+  WHERE FIRST_NAME='Sofie' AND LAST_NAME='Janssen'
+  LIMIT 1
+);
 
-SELECT DELIVERY_PERSON_ID INTO @sofie_id
-FROM DELIVERY_PERSON
-WHERE FIRST_NAME='Sofie' AND LAST_NAME='Janssen' LIMIT 1;
+SET @lars_id = (
+  SELECT DELIVERY_PERSON_ID
+  FROM DELIVERY_PERSON
+  WHERE FIRST_NAME='Lars' AND LAST_NAME='Bakker'
+  LIMIT 1
+);
 
-SELECT DELIVERY_PERSON_ID INTO @lars_id
-FROM DELIVERY_PERSON
-WHERE FIRST_NAME='Lars' AND LAST_NAME='Bakker' LIMIT 1;
 
 CREATE TABLE IF NOT EXISTS DELIVERY_PERSON_POSTAL (
   DELIVERY_PERSON_ID INT NOT NULL,
@@ -389,7 +402,7 @@ CREATE TABLE IF NOT EXISTS DELIVERY_PERSON_POSTAL (
     ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
-INSERT INTO DELIVERY_PERSON_POSTAL (DELIVERY_PERSON_ID, POSTAL_CODE_PREFIX) VALUES
+INSERT IGNORE INTO DELIVERY_PERSON_POSTAL (DELIVERY_PERSON_ID, POSTAL_CODE_PREFIX) VALUES
 (@max_id,  '1011'),
 (@max_id,  '1012'),
 (@sofie_id,'1013'),
@@ -553,8 +566,9 @@ SELECT 10, p.PRODUCT_ID, 1 FROM PRODUCT p WHERE p.PRODUCT_NAME='Vegan Special';
 
 
 
+DROP VIEW IF EXISTS v_product_prices;
 
-CREATE OR REPLACE VIEW v_product_prices AS
+CREATE VIEW v_product_prices AS
 SELECT
     p.PRODUCT_ID,
     p.PRODUCT_NAME,
@@ -562,7 +576,11 @@ SELECT
     p.IS_VEGAN,
     p.IS_VEGETARIAN,
     ROUND(
-        (COALESCE(SUM(i.COST * pi.NUMBER_OF_INGREDIENTS), 0) * (1 + pt.MARGIN/100))
+        GREATEST(
+            COALESCE(SUM(i.COST * pi.NUMBER_OF_INGREDIENTS), 0),
+            p.COST
+        )
+        * (1 + pt.MARGIN/100)
         * (1 + pt.VAT/100),
         2
     ) AS FINAL_PRICE
@@ -570,4 +588,5 @@ FROM PRODUCT p
 JOIN PRODUCT_TYPE pt ON pt.PRODUCT_TYPE_ID = p.PRODUCT_TYPE_ID
 LEFT JOIN PRODUCT_INGREDIENT pi ON pi.PRODUCT_ID = p.PRODUCT_ID
 LEFT JOIN INGREDIENT i ON i.INGREDIENT_ID = pi.INGREDIENT_ID
-GROUP BY p.PRODUCT_ID, p.PRODUCT_NAME, pt.PRODUCT_TYPE_NAME, p.IS_VEGAN, p.IS_VEGETARIAN, pt.MARGIN, pt.VAT;
+GROUP BY p.PRODUCT_ID, p.PRODUCT_NAME, pt.PRODUCT_TYPE_NAME,
+         p.IS_VEGAN, p.IS_VEGETARIAN, pt.MARGIN, pt.VAT, p.COST;
